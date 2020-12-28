@@ -19,4 +19,6 @@ numba
 autolab-core
 autolab-perception
 shapely
-
+opencv-python==4.2.0.32
+matplotlib==2.2.0
+llvmlite==0.31.0
