@@ -45,22 +45,27 @@ def do_job_convert_obj_to_sdf(x):
 
 def generate_obj_from_ply(file_name_):
     base = file_name_.split(".")[0]
+    print(base)
     p = subprocess.Popen(["pcl_ply2obj", base + ".ply", base + ".obj"])
     p.wait()
 
 
 if __name__ == '__main__':
     home_dir = os.environ['HOME']
-    file_dir = home_dir + "/dataset/ycb_meshes_google/objects"  # for google ycb
+    file_dir = "/datadrive/datasets/grasping/PointNetGPD/ycb_meshes_google/objects"  # for google ycb
     # file_dir = home_dir + "/dataset/ycb_meshes"  # for low quality ycb
-    path_sdfgen = home_dir + "/code/PointNetGPD/SDFGen/bin/SDFGen"
+    path_sdfgen = "/home/jil/workspace/2021_grasping/SDFGen/bin/SDFGen"
     file_list_all = get_file_name(file_dir)
     object_numbers = file_list_all.__len__()
 
     # generate obj from ply file
     for i in file_list_all:
-         generate_obj_from_ply(i+"/google_512k/nontextured.ply")
-         print("finish", i)
+        print(i)
+        if not os.path.exists(i+"/google_512k"):
+            continue
+        else:
+            generate_obj_from_ply(i+"/google_512k/nontextured.ply")
+            print("finish", i)
     # The operation for the multi core
     cores = multiprocessing.cpu_count()
     pool = multiprocessing.Pool(processes=cores)

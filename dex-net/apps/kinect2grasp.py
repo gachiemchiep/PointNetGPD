@@ -40,14 +40,14 @@ except ImportError:
     print("Can not import mayavi")
     mlab = None
 sys.path.append(path.dirname(path.dirname(path.dirname(path.abspath("__file__")))))
-sys.path.append(os.environ['HOME'] + "/code/PointNetGPD/PointNetGPD")
+sys.path.append(os.environ['HOME'] + "/workspace/2021_grasping/PointNetGPD")
 from main_test import test_network, model, args
 import logging
 logging.getLogger().setLevel(logging.FATAL)
 # global config:
-yaml_config = YamlConfig(os.environ['HOME'] + "/code/PointNetGPD/dex-net/test/config.yaml")
+yaml_config = YamlConfig(os.environ['HOME'] + "/workspace/2021_grasping/PointNetGPD/dex-net/test/config.yaml")
 gripper_name = 'robotiq_85'
-gripper = RobotGripper.load(gripper_name, os.environ['HOME'] + "/code/PointNetGPD/dex-net/data/grippers")
+gripper = RobotGripper.load(gripper_name, os.environ['HOME'] + "/workspace/2021_grasping/PointNetGPD/dex-net/data/grippers")
 ags = GpgGraspSamplerPcl(gripper, yaml_config)
 value_fc = 0.4  # no use, set a random number
 num_grasps = 40
@@ -134,7 +134,13 @@ def get_voxel_fun(points_, n):
 
 
 def cal_grasp(msg, cam_pos_):
-    points_ = pointclouds.pointcloud2_to_xyz_array(msg)
+    points__ = pointclouds.pointcloud2_to_xyz_array(msg)
+
+    sor = points__.make_voxel_grid_filter()
+    sor.set_leaf_size(0.102, 0.102, 0.102)
+    points_ = sor.filter()
+
+    print("call_grasp : {}".format(type(points_)))
     points_ = points_.astype(np.float32)
     remove_white = False
     if remove_white:
@@ -171,6 +177,9 @@ def cal_grasp(msg, cam_pos_):
     select_point_above_table = 0.010
     #  modify of gpg: make it as a parameter. avoid select points near the table.
     points_for_sample = points_[np.where(points_[:, 2] > select_point_above_table)[0]]
+
+    rospy.loginfo("pointcloud : size={}, height={}, width={}".format(points_for_sample.size, points_for_sample.shape[0], points_for_sample.shape[1]))
+
     if len(points_for_sample) == 0:
         rospy.loginfo("Can not seltect point, maybe the point cloud is too low?")
         return [], points_, surface_normal
@@ -439,13 +448,13 @@ if __name__ == '__main__':
     pub2 = rospy.Publisher('/detect_grasps/clustered_grasps', GraspConfigList, queue_size=1)
     rate = rospy.Rate(10)
     rospy.set_param("/robot_at_home", "true")  # only use when in simulation test.
-    rospy.loginfo("getting transform from kinect2 to table top")
+    rospy.loginfo("getting transform from camera_1 (realsense) to table top")
     cam_pos = []
     listener = tf.TransformListener()
     get_transform = False
     while not get_transform:
         try:
-            cam_pos, _ = listener.lookupTransform('/table_top', '/kinect2_ir_optical_frame', rospy.Time(0))
+            cam_pos, _ = listener.lookupTransform('/table', '/camera_1_color_optical_frame', rospy.Time(0))
             get_transform = True
             rospy.loginfo("got transform complete")
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
@@ -463,8 +472,8 @@ if __name__ == '__main__':
             rospy.loginfo("Robot is at home, safely catching point cloud data.")
             if single_obj_testing:
                 input("Pleas put object on table and press any number to continue!")
-        rospy.loginfo("rospy is waiting for message: /table_top_points")
-        kinect_data = rospy.wait_for_message("/table_top_points", PointCloud2)
+        rospy.loginfo("rospy is waiting for message: /camera_1/depth/color/points")
+        kinect_data = rospy.wait_for_message("/camera_1/depth/color/points", PointCloud2)
         real_good_grasp = []
         real_bad_grasp = []
         real_score_value = []
